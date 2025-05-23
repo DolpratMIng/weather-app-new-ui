@@ -4,6 +4,8 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,35 +13,39 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  directUrl = env("DIRECT_URL") // Keeping your directUrl
 }
 
 model CurrentWeather {
-  id          Int      @id @default(autoincrement())
+  // RECOMMENDATION: Change id to String for easier upsert of a single record.
+  // If you must keep Int @id @default(autoincrement()), the API logic will need to be more complex.
+  // Using a fixed string ID like 'bangkok-current-weather' is ideal for single-entity tables.
+  id          String    @id @default("bangkok-current-weather") // Fixed ID for single current weather record
   temperature Float
-  humidity    Float
+  // RECOMMENDATION: Humidity from Open-Meteo is typically an integer.
+  humidity    Int
   weatherCode Int
   description String
-  recordedAt  DateTime @default(now())
+  recordedAt  DateTime  @default(now())
 }
 
 model ForecastDay {
-  id             Int      @id @default(autoincrement())
-  date           DateTime
+  id            Int       @id @default(autoincrement()) // Keeping your autoincrement ID
+  date          DateTime  @unique @db.Date // CRUCIAL: Make 'date' unique and use @db.Date for daily records
   maxTemperature Float
-  minTemperature  Float
-  weatherCode    Int
-  description    String
-  recordedAt     DateTime @default(now())
+  minTemperature Float
+  weatherCode   Int
+  description   String
+  recordedAt    DateTime  @default(now()) // Keeping your recordedAt
 }
 
 model HistoricalDay {
-  id             Int      @id @default(autoincrement())
-  date           DateTime
+  id            Int       @id @default(autoincrement()) // Keeping your autoincrement ID
+  date          DateTime  @unique @db.Date // CRUCIAL: Make 'date' unique and use @db.Date for daily records
   maxTemperature Float
   minTemperature Float
-  weatherCode    Int
-  description    String
-  precipitation  Float
-  recordedAt     DateTime @default(now())
+  precipitation Float
+  weatherCode   Int
+  description   String
+  recordedAt    DateTime  @default(now()) // Keeping your recordedAt
 }

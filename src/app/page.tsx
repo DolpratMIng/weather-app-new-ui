@@ -14,18 +14,51 @@ import {
 } from "lucide-react";
 
 export default async function HomePage() {
-  // Keep your original data fetching logic
+  // STEP 1: Trigger the backend API route to fetch and store weather data.
+  // This ensures the database has the latest data before the component fetches it.
+  // This fetch call will run on the server side as this is a Server Component.
+  try {
+    // Make sure to use the full URL, including the protocol and domain.
+    // For local development, this would be e.g., 'http://localhost:3000/api/weather'
+    // For deployment, NEXT_PUBLIC_APP_URL should point to your deployed URL.
+    const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/weather`;
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      // 'no-store' cache control ensures that Next.js doesn't cache the result
+      // of this server-side fetch, meaning the API route is always hit.
+      headers: { "Cache-Control": "no-store" },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("Failed to refresh weather data from API:", error);
+      // In a real app, you might want to display a user-friendly error message
+    } else {
+      console.log("Weather data refresh API call successful.");
+    }
+  } catch (error) {
+    console.error("Error calling weather refresh API from HomePage:", error);
+    // Handle network errors or other issues during the API call
+  }
+
+  // STEP 2: Fetch data from your Supabase database using Prisma.
+  // IMPORTANT: Using camelCase for model names here (currentWeather, forecastDay, historicalDay)
+  // to match how Prisma Client is generating them in your environment.
   const [current] = await prisma.currentWeather.findMany({
+    // Changed to camelCase
     orderBy: { recordedAt: "desc" },
     take: 1,
   });
 
   const forecast = await prisma.forecastDay.findMany({
+    // Changed to camelCase
     orderBy: { date: "asc" },
     take: 7,
   });
 
   const historical = await prisma.historicalDay.findMany({
+    // Changed to camelCase
     orderBy: { date: "desc" },
     take: 7,
   });
@@ -33,14 +66,18 @@ export default async function HomePage() {
   // Helper function to get weather icon based on weather code
   const getWeatherIcon = (code: number, className = "h-8 w-8") => {
     // This is a simplified mapping - adjust based on your actual weather codes
-    if (code < 300) return <CloudLightning className={className} />; // Thunderstorm
-    if (code < 400) return <CloudDrizzle className={className} />; // Drizzle
-    if (code < 600) return <CloudRain className={className} />; // Rain
-    if (code < 700) return <CloudSnow className={className} />; // Snow
-    if (code < 800) return <CloudFog className={className} />; // Atmosphere (fog, mist, etc.)
-    if (code === 800) return <Sun className={className} />; // Clear sky
-    if (code < 900) return <Cloud className={className} />; // Clouds
-    return <Wind className={className} />; // Other
+    if (code === 0) return <Sun className={className} />;
+    if ([1, 2, 3].includes(code)) return <Cloud className={className} />;
+    if ([45, 48].includes(code)) return <CloudFog className={className} />;
+    if ([51, 53, 55, 56, 57].includes(code))
+      return <CloudDrizzle className={className} />;
+    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code))
+      return <CloudRain className={className} />;
+    if ([71, 73, 75, 77, 85, 86].includes(code))
+      return <CloudSnow className={className} />;
+    if ([95, 96, 99].includes(code))
+      return <CloudLightning className={className} />;
+    return <Wind className={className} />; // Default or unknown
   };
 
   // Format date to display day name
